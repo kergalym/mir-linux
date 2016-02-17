@@ -1,0 +1,8 @@
+# Убирается из отслеживаний следующие элементы:
+*.log
+*.aux
+*.synctex.gz
+*.pdf
+screens/
+text_book/
+titlepage/
