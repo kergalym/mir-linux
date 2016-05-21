@@ -1934,7 +1934,7 @@ Device Boot 	Start 	End	Blocks		Id 	System
 \begin{tcolorbox}
 \begin{lstlisting}
 # cat /proc/swaps 
-Filename				Type		Size	Used	Priority
+Filename	Type		Size	Used	Priority
 /dev/sda1       partition	1048572	108	-1
 \end{lstlisting}
 \end{tcolorbox}
@@ -2141,14 +2141,15 @@ drwxrwx--- 2 root portage 4096 Jul 14 18:47 /var/log/sandbox
 \begin{tcolorbox}
 \begin{lstlisting}
 $ stat /etc/passwd
-File: 		/etc/passwd'
-Size:		3678 Blocks: 8 
-IO Block: 	4096 regular file 
-Device: 	808h/2056d 
-Inode: 	3984335 
-Links: 	1 
-Access: 	(0644/-rw-r--r--) Uid: ( 0/ root) 
-Gid: 		( 0/ root)
+File: /etc/passwd'
+Size: 3678 
+Blocks: 8 
+IO Block: 4096 regular file 
+Device:	808h/2056d 
+Inode:	3984335 
+Links:	1 
+Access:	(0644/-rw-r--r--) Uid: ( 0/ root) 
+Gid:	( 0/ root)
 Access:	2013-03-18 21:46:06.000000000 +0100
 Modify:	2013-03-18 21:46:06.000000000 +0100
 Change:	2013-03-18 21:46:06.000000000 +0100
@@ -2184,19 +2185,19 @@ Change:	2013-03-18 21:46:06.000000000 +0100
 \begin{tcolorbox}
 \begin{lstlisting}
 $ stat /tmp
-File: 		`/tmp'
-Size: 	28672 
-Blocks: 	56 IO 
-Block: 	4096 directory
-Device: 	808h/2056d 
-Inode: 	3096577 
-Links: 	759
-Access: 	(1777/drwxrwxrwt) 
-Uid: 		( 0/ root) 
-Gid: 		( 0/ root)
-Access: 	2010-01-10 17:44:04.000000000 +0100
-Modify: 	2013-04-02 00:04:36.000000000 +0200
-Change: 	2013-04-02 00:04:36.000000000 +0200 
+File: `/tmp'
+Size: 28672 
+Blocks: 56 
+IO Block: 4096 directory
+Device: 808h/2056d 
+Inode: 3096577 
+Links: 759
+Access: (1777/drwxrwxrwt) 
+Uid: 	( 0/ root) 
+Gid: 	( 0/ root)
+Access: 2010-01-10 17:44:04.000000000 +0100
+Modify: 2013-04-02 00:04:36.000000000 +0200
+Change: 2013-04-02 00:04:36.000000000 +0200 
 \end{lstlisting}
 \end{tcolorbox}
 
@@ -2206,14 +2207,16 @@ Change: 	2013-04-02 00:04:36.000000000 +0200
 \begin{tcolorbox}
 \begin{lstlisting}
 $ stat /bin/mount
-File: `	/bin/mount'
-Size: 	59688 Blocks: 128 
-IO Block: 	4096 regular file 
-Device: 	808h/2056d Inode: 262481 
-Links: 	1
-Access: 	(4711/-rws--x--x) 
-Uid: 		( 0/ root) 
-Gid: 		( 0/ root)
+File: /bin/mount'
+Size: 59688 
+Blocks: 128 
+IO Block: 4096 regular file 
+Device: 808h/2056d 
+Inode: 262481 
+Links: 1
+Access: (4711/-rws--x--x) 
+Uid: ( 0/ root) 
+Gid: ( 0/ root)
 \end{lstlisting}
 \end{tcolorbox}
 
@@ -2524,6 +2527,6 @@ $ mkdir -p tmp/test/to/work/with/privileges
 
 \newpage
 
-%%% Глава 6. Работа с процессами %%%
+%%% Глава 6. Файловая система Linux %%%
 
 \end{document}
