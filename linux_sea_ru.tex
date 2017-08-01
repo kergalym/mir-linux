@@ -7067,6 +7067,803 @@ Enter password: (unless configured with NOPASSWD)
 \end{enumerate}
 \end{tcolorbox}
 
+\newpage
+
+%%% Глава 11: Управление сетью %%%
+\pagestyle{headings}
+\chapter{Управление сетью}
+
+\section{Знакомство}
+Важным аспектом управления системой является настройка сети. Linux очень мощная операционная система с преобладающим набором сетевых возможностей. Даже больше, многие сетевые устройства, в действительности, основаны на Linux. 
+
+Есть две конфигурации, с которыми, скорее всего, можно столкнуться: конфигурация проводной сети (из которых я рассмотрю подключение Ethernet) и беспроводной (стандарт IEEE 802.11*).
+\section{Поддержка сетевой карты}
+\subsection{Родная поддержка драйверов}
+\subsubsection{Карты PCI}
+Прежде всего, следует проверить, насколько много интерфейсов ожидается в системе. Узнайте это с помощью PCI-устройств, обнаруженных в Linux. Например, чтобы найти что-нибудь о сетевом контроллере (контроллер "Ethernet"):
+
+\begin{tcolorbox}
+\begin{lstlisting}
+# lspci | grep Ethernet
+06:00.0 Ethernet controller: Realtek Semiconductor Co., Ltd.
+	RTL-8169 Gigabit Ethernet (rev 10)
+\end{lstlisting}
+\end{tcolorbox}
+
+В данном случае найдена одна сетевая карта, предлагающая возможности Ethernet. Карта использует набор чипа Realtek 8169.
+
+\subsubsection{Сетевые карты USB}
+Имеется несколько USB-устройств, предоставляющих сетевые возможности (большинство из них беспроводные) для которых доступна родная поддержка Linux. Примером служат устройства с набором чипа Intel 4965agn. Если ядро Linux поддерживает его, то  сетевой интерфейс станет доступным, как только вы подключите его. Например, для беспроводных устройств следует использовать \textbf{iwconfig}, а для обычных карт Ethernet \textbf{ifconfig}.
+
+\begin{tcolorbox}
+\begin{lstlisting}
+# iwconfig
+lo 	no wireless extensions.
+dummy0 	no wireless extensions.
+eth0 	no wireless extensions.
+wlan0 	IEEE 802.11g ESSID:"default" Nickname:"default"
+	Mode:Managed Frequency:2.412 GHz Access Point: 00:1D:6A:A2:CD:29
+	Bit Rate:54 Mb/s Tx-Power=20 dBm  Sensitivity=8/0
+	Retry limit:7  RTS thr:off  Fragment thr:off
+	Power Management:off
+	Link Quality=89/100 Signal level=-37 dBm Noise level=-89 dBm
+	Rx invalid nwid:0 Rx invalid crypt:0 Rx invalid frag:0
+	Tx excessive retries:0 Invalid misc:0  Missed beacon:7
+\end{lstlisting}
+\end{tcolorbox}
+
+\section{Поддержка посредством драйверов Windows}
+Возможна поддержка (беспроводной или обычной) сетевой карты с помощью драйверов Windows. Инструмент, который необходимо установить, называется \textbf{ndiswrapper}. Сперва установите его:
+
+\begin{tcolorbox}
+\begin{lstlisting}
+# emerge ndiswrapper
+\end{lstlisting}
+\end{tcolorbox}
+Далее, загрузите драйверы Windows для сетевой карты или примонтируйте компакт-диск с драйвером, предоставленный вместе с картой. На нем следует найти файл .inf. Этот файл содержит сведения, касающиеся драйвера карты и используется ndiswrapper'ом для создания обертки.
+
+Установите драйвер, используя команду \textbf{ndiswrapper -i} из того места, где он распакован.
+
+\begin{tcolorbox}
+\begin{lstlisting}
+# ndiswrapper -i net8191se.inf
+\end{lstlisting}
+\end{tcolorbox}
+
+Чтобы проверить успешно ли установился драйвер, просмотрите список установленных драйверов, используя \textbf{ndiswrapper -l}:
+
+\begin{tcolorbox}
+\begin{lstlisting}
+# ndiswrapper -l
+
+net8191se: driver installed, hardware present
+\end{lstlisting}
+\end{tcolorbox}
+Как можно заметить, драйвер установлен и обнаружено совместимое оборудование.
+
+Теперь заставим ndiswrapper создать необходимую информацию для modprobe (modprobe используется системой для загрузки модулей ядра с корректной информацией; ndiswrapper создает её и она подтверждает, что когда модуль ядра ndiswrapper загружен, также активируются установленные драйверы обертки) и убедимся, что модуль ядра ndiswrapper запускается при загрузке системы:
+
+\begin{tcolorbox}
+\# ndiswrapper -m
+
+\# nano -w /etc/modules.autoload.d/kernel-2.6
+
+(Добавьте "ndiswrapper" в новую строку)
+\end{tcolorbox}
+Также можно вручную загрузить модуль ядра ndiswrapper:
+\begin{tcolorbox}
+\begin{lstlisting}
+# modprobe ndiswrapper
+\end{lstlisting}
+\end{tcolorbox}
+
+Теперь можно проверить доступен ли сетевой интерфейс (\textbf{iwconfig} или \textbf{ifconfig}.
+
+\subsubsection{Проверьте сетевые возможности}
+Чтобы узнать, определил ли Linux этот интерфейс, запустите команду \textbf{ip link}. Она отобразит интерфейсы, распознанные в системе.
+
+\begin{tcolorbox}
+\begin{lstlisting}
+# ip link
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 16436 qdisc noqueue
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+2: eth0: <BROADCAST,MULTICAST> mtu 1500 qdisc pfifo_fast qlen 1000
+    link/ether 00:c0:9f:94:6b:f5 brd ff:ff:ff:ff:ff:ff
+3: eth1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast
+      qlen 1000
+    link/ether 00:12:f0:57:99:37 brd ff:ff:ff:ff:ff:ff
+\end{lstlisting}
+\end{tcolorbox}
+Теперь, чтобы выяснить, какие отображаются интерфейсы, направленные на Ethernet-контроллер, неообходимо проверить вывод ядра Linux на момент их обнаружения. Можно использовать команду dmesg (которая отображает последние несколько тысяч строк, произведенных ядром) или \textit{/var/log/dmesg} (в зависимости от регистратора системы), который представляет собой журнальный файл, где весь вывод ядра Linux сохраняется на протяжении системного сеанса (т. е. до следующей перезагрузки).
+
+\begin{tcolorbox}
+\begin{lstlisting}
+# grep -i eth0 /var/log/dmesg
+eth0: RTL8169sb/8110sb at 0xf8826000, 00:c0:9f:94:6b:f5, XID 10000000
+IRQ 11
+\end{lstlisting}
+\end{tcolorbox}
+
+В этом случае интерфейс eth0, разумеется, направлен на ранее обнаруженный Ethernet-контроллер.
+Если Linux не распознал устройство, следует перенастроить ядро так, чтобы включить поддержку сетевого драйвера. Конфигурирование ядра Linux обсуждалось выше, как часть главы об управлении устройствами.
+
+\section{Конфигурация проводной сети}
+Большинство систем имеет поддержку пополярного проводного соединения Ethernet. Предположим, что вы уже знакомы с понятием Ethernet и основами TCP/IP.
+
+Перед настройкой Gentoo Linux для поддержки Ethernet-соединения, сперва необходимо убедиться, что сетевая карта поддерживается. И если это так, настройте интерфейс,  задав IP-адрес вручную, или чтобы IP-адрес получался автоматически.
+
+\subsection{Настройка проводной сети}
+Существуют два способа, позволяющие настроить проводную сеть: ручное решение (работающее на всех системах Linux) или решение, специфичное для Gentoo Linux.
+
+\subsubsection{Ручная конфигурация}
+Самый быстрый способ настройки сети, это сообщить Linux чего вы желаете - иметь статический IP-адрес для интерфейса или автоматически получать IP-адрес от DHCP-сервера, который работает в сети (Большинство инструментов Интернет-шаринга или техник ввключает в себя функциональность DHCP).
+
+Чтобы задать интерфейсу eth0 статический IP-адрес 192.168.0.100, скажите Linux, что шлюз в сети доступен по адресу 192.168.0.1 (IP-адрес, который разделяет доступ к внешним сетям):
+
+\begin{tcolorbox}
+\begin{lstlisting}
+# ifconfig eth0 192.168.0.100 netmask 255.255.255.0
+broadcast 192.168.0.255 up
+# ip route add default via 192.168.0.1
+\end{lstlisting}
+\end{tcolorbox}
+
+В этом примере, использовалась команда \textbf{ifconfig}, чтобы сказать Linux назначить интерфейсу eth0 IP-адрес 192.168.0.100, установив маску сети (часть IP-адреса, обозначающая сеть) как 255.255.255.0 и направить вещание (IP-адрес, который адресует все IP-адреса в локальной сети) на 192.168.0.255.
+
+Это то же что и присвоить IP-адрес на сеть 192.168.0.1/24 (для тех кто понимает
+нотации CIDR).
+
+Если вам нужны статические IP-адреса, но не знаете маску сети (и вещание), обратитесь к администратору сети - это довольно простые параметры, необходимые для конфигурации IP-адреса.
+
+Вы, скорее всего, также получите набор IP-адресов, которые соответствуют DNS-серверам (серверы имен) сети. Вам потребуется установить эти IP-адреса в файле \textit{/etc/resolv.conf}:
+
+\begin{tcolorbox}
+\begin{lstlisting}
+# nano /etc/resolv.conf
+search lan
+nameserver 10.2.3.4
+nameserver 10.2.3.5
+\end{lstlisting}
+\end{tcolorbox}
+
+С этим конфигурационным файлом мы говорим Linux, что имя хоста может быть разрешено с помощью службы DNS по соответствующим IP-адресам (серверы доменных имен), если сам IP-адрес ему неизвестен.
+
+Если необходимо настроить eth0, чтобы автоматически получать IP-адреса (шлюз по умолчанию и даже DNS-сервера), что является наиболее популярным методом для конфигурации локальной сети, то можно использовать клиент DHCP, например, такой как \textbf{dhcpcd}:
+
+\begin{tcolorbox}
+\begin{lstlisting}
+# dhcpcd eth0
+\end{lstlisting}
+\end{tcolorbox}
+
+На этом всё (если, конечно же, команда не даст сбой ;-)
+
+\subsubsection{Конфигурация сети в стиле Gentoo Linux}
+Если необходимо настроить сетевое устройство в Gentoo Linux, то следует отредактировать файл \textit{/etc/conf.d/net}
+
+\begin{tcolorbox}
+\begin{lstlisting}
+# nano /etc/conf.d/net
+\end{lstlisting}
+\end{tcolorbox}
+
+Если необходимо задать только IP-адрес (статический), то следует установить  следующее (предположим, что статический IP-адрес 192.168.0.100, шлюз 192.168.0.1 и маска сети 255.255.255.0, серверы имен 10.2.3.4 и 10.2.3.5):
+
+\begin{tcolorbox}
+\begin{lstlisting}
+config_eth0="192.168.0.100 netmask 255.255.255.0"
+dns_servers_eth0="10.2.3.4 10.2.3.5"
+\end{lstlisting}
+\end{tcolorbox}
+
+Если вы желаете настроить интерфейс на использование DHCP (чтобы автоматически получать IP-адрес):
+\begin{tcolorbox}
+\begin{lstlisting}
+config_eth0="dhcp"
+\end{lstlisting}
+\end{tcolorbox}
+
+Чтобы узнать больше примеров настройки сети в Gentoo Linux (с более продвинутыми возможностями), проверьте файл \textit{/usr/share/doc/openrc-*/net.example}.
+
+Чтобы активировать эту поддержку, добавьте службу net.eth0 в уровень запуска по умолчанию и запустите его.
+
+\begin{tcolorbox}
+\begin{lstlisting}
+# rc-update add net.eth0 default
+# /etc/init.d/net.eth0 start
+\end{lstlisting}
+\end{tcolorbox}
+
+Если команда сообщает о его отсутствии, создайте его как символическую ссылку на служебный сценарий net.lo:
+
+\begin{tcolorbox}
+\begin{lstlisting}
+# cd /etc/init.d; ln -s net.lo net.eth0
+\end{lstlisting}
+\end{tcolorbox}
+
+Больше о службах вы узнаете позже.
+
+\subsection{Настройка беспроводной сети}
+Поддержка беспроводной сети активно развивается в Linux. К сожалению, это одна из тех сфер, где автоматическая настройка "из коробки" всё ещё недоступна. Linux нуждается в этом, поскольку сами поставщики беспроводных карт не соблюдают стандарты или отказываются помогать в разработке (свободного) драйвера. В результате, поддержка таких карт (драйверы) может быть задействована с помощью свободных драйверов (если повезет), проприетарными (собственническими) драйверами Linux (если везет в некоторой степени), либо проприетарные драйверы Windows (если не повезло, но всё ещё можно заставить карту работать). В четвертом случае, карту... просто... не получится заставить работать. 
+
+Тем не менее, поддержка беспроводных карт - как уже было сказано - активно развивается. Теперь, неподдерживаемая карта становится поддерживаемой в течение 6 месяцев. 
+
+В общем, от 80\% до 90\% беспроводных карт или чипов поддерживаются в Linux.
+
+\subsubsection{Поддержка сетевой карты}
+Если ядро настроено на поддержку беспроводной сетевой карты, следует найти интерфейс в выводе \textbf{ifconfig -a}.
+\begin{tcolorbox}
+\begin{lstlisting}
+# ifconfig -a
+eth0 	Link encap:Ethernet HWaddr c8:0a:a9:42:9d:76
+	inet addr:192.168.20.2 Bcast:192.168.20.255 Mask:255.255.255.0
+	UP BROADCAST MULTICAST MTU:1500 Metric:1
+	RX packets:0 errors:0 dropped:0 overruns:0 frame:0
+	TX packets:0 errors:0 dropped:0 overruns:0 carrier:0
+	collisions:0 txqueuelen:1000
+	RX bytes:0 (0.0 B) TX bytes:0 (0.0 B)
+	Interrupt:30 Base address:0x6000
+eth1	Link encap:Ethernet HWaddr f0:7b:cb:0f:5a:3b
+	inet addr:192.168.1.3 Bcast:192.168.1.255 Mask:255.255.255.0
+	UP BROADCAST RUNNING MULTICAST MTU:1500 Metric:1
+	RX packets:510358 errors:0 dropped:0 overruns:0 frame:13407
+	TX packets:300167 errors:5 dropped:0 overruns:0 carrier:0
+	collisions:0 txqueuelen:1000
+	RX bytes:732540912 (698.6 MiB) TX bytes:26679459 (25.4 MiB)
+	Interrupt:16	
+\end{lstlisting}
+\end{tcolorbox}
+
+В вышеприведенном примере обнаружены два интерфейса Ethernet: eth0 (который, в нашем случае, обычный интерфейс Ethernet) и eth1 (так как в нашей системе имеется только один проводной интерфейс, то это, в большинстве случаев, беспроводная карта). Чтобы однозначно удостовериться в возможностях карты, необходимо установить пакет wireless-tools или iw.
+
+\subsubsection{Использование поддержки беспроводных расширений (wireless-tools)}
+Инструмент, предоставляющий поддержку беспроводных расширений (старый, но всё ещё работающий) медленно устаревает в пользу нового набора инструментов. Тем не менее, может потребоваться использовать старый набор как переключатель, также требующий переписывание драйверов беспроводной карты.
+
+\textbf{Проверка возможностей беспроводной карты}
+
+Чтобы проверить, имеет ли отдельное устройство Ethernet возможности беспроводной сети,  сперва установите wireless-tools, а затем запустите \textbf{iwconfig}:
+
+\begin{tcolorbox}
+\begin{lstlisting}
+# emerge wireless-tools
+# iwconfig
+lo	no wireless extensions.
+eth0	no wireless extensions.
+eth1	IEEE 802.11bgn ESSID:"1de_verdiep" Nickname:""
+	Mode:Managed Frequency:2.462 GHz Access Point: 02:26:5A:4B:E4:6A
+	Bit Rate=54 Mb/s Tx-Power:24 dBm
+	Retry min limit:7 RTS thr:off Fragment thr:off
+	Encryption key:off
+	Power Managementmode:All packets received
+	Link Quality=5/5 Signal level=-48 dBm Noise level=-94 dBm
+	Rx invalid nwid:0 Rx invalid crypt:0 Rx invalid frag:0
+	Tx excessive retries:32 Invalid misc:0 Missed beacon:0
+\end{lstlisting}
+\end{tcolorbox}
+
+Как и ожидалось, eth1, несомненно, оказался беспроводным интерфейсом.
+
+\textbf{Получение доступа к беспроводной сети}
+
+Для доступа к существующей беспроводной сети необходимо несколько парамеров. Некоторые их могут быть получены сразу же, другие могут потребовать сведений от администратора сети.
+
+Сперва начнем с имени сети, которая сокращенно называется ESSID. С помощью команды  \textbf{iwlist} можно получить список обнаруженных беспроводных сетей и их ESSID:
+
+\begin{tcolorbox}
+\begin{lstlisting}
+# iwlist eth1 scan
+eth1		Scan completed :
+		Cell 01 - Address: 00:11:0A:2A:73:03
+			  ESSID:"aaa"
+			  Protocol:IEEE 802.11bg
+			  Mode:Master
+			  Frequency:2.417 GHz (Channel 2)
+			  Encryption key:off
+			  Bit Rates:1 Mb/s; 2 Mb/s; 5.5 Mb/s; 9 Mb/s; 11 Mb/s
+				    6 Mb/s; 12 Mb/s; 18 Mb/s; 24 Mb/s; 36 Mb/s
+				    48 Mb/s; 54 Mb/s
+			  Quality=82/100 Signal level=-48 dBm
+			  Extra: Last beacon: 37ms ago
+		Cell 02 - Address: 00:C0:49:B0:37:43
+			  ESSID:"USR8022"
+			  Protocol:IEEE 802.11b
+			  Mode:Master
+			  Frequency:2.462 GHz (Channel 11)
+			  Encryption key:on
+			  Bit Rates:1 Mb/s; 2 Mb/s; 5.5 Mb/s; 11 Mb/s; 22 Mb/s
+			  Quality=41/100 Signal level=-76 dBm
+			  Extra: Last beacon: 7665ms ago
+\end{lstlisting}
+\end{tcolorbox}
+
+В данном случае найдены две сети. Первая имеет ESSID \textit{"aaa"} и не требует какое-либо шифрование (таким образом, не нужно знать пароль или парольную фразу для доступа к этой сети) - обратите внимание на параметр \textit{"Encryption key:off"}. Вторая имеет ESSID USR8022 и требует ключ шифрования. При этом, сигнал второй сети также менее мощный (ниже качество и уровень сигнала).
+
+Чтобы настроить карту на использование отдельного ESSID, используйте команду iwconfig:
+
+\begin{tcolorbox}
+\begin{lstlisting}
+# iwconfig eth1 essid aaa
+\end{lstlisting}
+\end{tcolorbox}
+
+Предположим, что также нужно ввести ключ шифрования: можно добавить ключ либо в шестнадцатеричном виде либо через представление в ASCII.
+
+\begin{tcolorbox}
+\begin{lstlisting}
+# iwconfig eth1 essid USR8022 key FF83-D9B3-58C4-200F-ADEA-DBEE-F3
+# iwconfig eth1 essid USR8022 key s:MyPassPhraze
+\end{lstlisting}
+\end{tcolorbox}
+
+Как только беспроводной интерфейс подключится к одной из сетей, настройте его как если бы это был фиксированный интерфейс Ethernet.
+
+Теперь, Gentoo Linux позволит настроить беспроводную сетевую карту также посредством файла \textit{/etc/conf.d/net}.
+
+В следующем примере задается беспроводная конфигурация и поддерживаются обе сети (aaa и USR8022), где \textit{"aaa"} является предпочитаемой сетью.
+
+\begin{tcolorbox}
+\begin{lstlisting}
+modules="iwconfig"
+key_aaa="key off"
+key_USR8022="s:MyPassPhraze enc open"
+preferred_aps="'aaa' 'USR8022'"
+\end{lstlisting}
+\end{tcolorbox}
+
+Как только интерфейс подключится к беспроводной сети, используйте команды настройки IP, как показано ранее для проводных сетей. 
+
+И снова необходимо добавить службу net.eth1 в уровень запуска по умолчанию и запустить её:
+\begin{tcolorbox}
+\begin{lstlisting}
+# rc-update add net.eth1 default
+# /etc/init.d/net.eth1 start
+\end{lstlisting}
+\end{tcolorbox}
+
+\subsubsection{Использование поддержки новых беспроводных расширений (iw)}
+
+Поддержка новых беспроводных расширений требует драйверы ядра, использующие (новый) netlink-интерфейс nl80211. Почти все свободные драйверы для беспроводной сети переведены на этот интерфейс, поэтому если беспроводная карта поддерживается ядром Linux по умолчанию, то в большинстве случаев желательно использовать набор iw.
+
+\textbf{Проверка возможностей беспроводной карты}
+
+Чтобы проверить, действительно ли интерфейс Ethernet имеет возможности беспроводной сети, сперва установите iw, а затем запустите \textbf{iw list}:
+
+\begin{tcolorbox}
+\begin{lstlisting}
+# emerge iw
+# iw list
+lWiphy phy0
+	 Band 1:
+		Frequencies:
+			* 2412 MHz [1] (20.0 dBm)
+			* 2417 MHz [2] (20.0 dBm)
+...
+			* 2484 MHz [14] (20.0 dBm) (passive scanning, no IBSS)
+		Bitrates (non-HT):
+			* 1.0 Mbps
+			* 2.0 Mbps (short preamble supported)
+...
+			* 54.0 Mbps
+	max # scan SSIDs: 1
+	Supported interface modes:
+		 * IBSS
+		 * managed
+\end{lstlisting}
+\end{tcolorbox}
+
+В отличие от wireless-tools, устройство из iw lists станет phy0 (так не будет прямой связи с eth0/eth1). Связь может быть обнаружена с помощью \textbf{iw dev}.
+
+\begin{tcolorbox}
+\begin{lstlisting}
+# iw dev
+phy#0
+	Interface eth1
+		ifindex 4
+		type managed
+\end{lstlisting}
+\end{tcolorbox}
+
+\textbf{Получение доступа к беспроводной сети}
+
+Для доступа к существующей беспроводной сети необходимо несколько парамеров. Некоторые их могут быть получены сразу же, другие могут потребовать сведений от администратора сети.
+
+Сперва начнем с имени сети, которая сокращенно называется ESSID. С помощью команды  \textbf{iw scan} можно получить список обнаруженных беспроводных сетей и их ESSID:
+
+\begin{tcolorbox}
+\begin{lstlisting}
+# iw dev eth1 scan
+
+BSS 02:87:11:26:39:f9 (on eth1)
+	TSF: 130175283584 usec (1d, 12:09:35)
+	freq: 2432
+	beacon interval: 100
+	capability: ESS Privacy ShortSlotTime (0x0411)
+	signal: 61.00 dBm
+	last seen: 930 ms ago
+	SSID: TM2300
+	Supported rates: 1.0* 2.0* 5.5* 11.0* 6.0 9.0 12.0 18.0
+	DS Parameter set: channel 5
+	ERP: Barker_Preamble_Mode
+	Extended supported rates: 24.0 36.0 48.0 54.0
+	RSN:	 * Version: 1
+		 * Group cipher: CCMP
+		 * Pairwise ciphers: CCMP
+		 * Authentication suites: PSK
+		 * Capabilities: (0x0000)
+BSS 00:1a:70:eb:ae:f4 (on eth1)
+	TSF: 606247219588 usec (7d, 00:24:07)
+	freq: 2437
+	beacon interval: 100
+	capability: ESS ShortSlotTime (0x0401)
+	signal: 72.00 dBm
+	last seen: 870 ms ago
+	SSID: linksys
+	Supported rates: 1.0* 2.0* 5.5* 11.0* 18.0 24.0 36.0 54.0
+	DS Parameter set: channel 6
+	ERP: <no flags>
+	Extended supported rates: 6.0 9.0 12.0 48.0
+\end{lstlisting}
+\end{tcolorbox}
+
+В данном случае найдены две сети. Первая имеет ESSID \textit{"TM2300"} и требует шифрование WPA (это можно выяснить из данных RSN). Вторая имеет ESSID "linksys"{} и не требует ключ шифрования.
+
+Чтобы настроить карту на использование отдельного ESSID, \textit{зашифрованного без WPA}, используйте команду \textbf{iw connect}:
+
+\begin{tcolorbox}
+\begin{lstlisting}
+# iw eth1 connect linksys
+\end{lstlisting}
+\end{tcolorbox}
+
+Предположим, что также нужно ввести ключ шифрования WEP: можно добавить ключ либо в шестнадцатеричном виде либо через представление в ASCII.
+
+\begin{tcolorbox}
+\begin{lstlisting}
+# iw eth1 connect myssid keys d:0:FF83D9B358C4200FE8343033
+# iw eth1 connect myssid keys 0:MyPrivatePassword
+\end{lstlisting}
+\end{tcolorbox}
+
+Чтобы проверить успешно ли подключение, запросите состояние связи используя \textbf{iw link}:
+
+\begin{tcolorbox}
+\begin{lstlisting}
+# iw dev eth1 link
+Connected to 68:7f:74:3b:b0:01 (on eth1)
+	SSID: linksys
+	freq: 5745
+	RX: 30206 bytes (201 packets)
+	TX: 4084 bytes (23 packets)
+	signal: -31 dBm
+	tx bitrate: 300.0 MBit/s MCS 15 40Mhz short GI
+\end{lstlisting}
+\end{tcolorbox}
+
+Как только интерфейс подключится к беспроводной сети, используйте команды настройки IP, как показано ранее для проводных сетей. 
+
+\subsubsection{Использование wpa\_supplicant для сетей с WPA-шифрованием}
+Инструмент wpa\_supplicant - это программный компонент, управляющий бесповодным соединением между системой и точкой доступа.Основное преимущество \textbf{wpa\_supplicant} над ранее описанными инструментами - поддержка WPA/WPA2.
+
+Перед тем как использовать wpa\_supplicant, необходимо установить его:
+
+\begin{tcolorbox}
+\begin{lstlisting}
+# emerge -a wpa_supplicant
+\end{lstlisting}
+\end{tcolorbox}
+
+\textbf{Получение доступа к беспроводной сети}
+
+Настройте wpa\_supplicant с поддержкой беспроводной сети(сетей), доступ к которой хотите получить. Предположим, что домашняя сеть называется "home"{}, защищенное (WPA) окружение имеет ключ "myHomeKey"{}, а на работе есть беспроводная сеть под названием "CompanyGuests", защищенное (WPA) окружение с ключом "myCompanyKey", а также третья незащищенная сеть под названием "хобби"{} в местном компьютерном клубе, то следующая конфигурация \textit{wpa\_supplicant} может работать:
+
+\begin{tcolorbox}
+\begin{lstlisting}
+ctrl_interface=/var/run/wpa_supplicant
+ctrl_interface_group=wheel
+
+network={
+  ssid="home"
+  psk="myHomeKey"
+}
+
+  network={
+  ssid="CompanyGuests"
+  psk="myCompanyKey"
+}
+
+  network={
+  ssid="hobby"
+  key_mgmt=NONE
+}
+\end{lstlisting}
+\end{tcolorbox}
+Инструмент \textbf{wpa\_supplicant} также поддерживает WPA2. Например:
+\begin{tcolorbox}
+\begin{lstlisting}
+network={
+  ssid="akkerdjie"
+  proto=WPA2
+  psk="highly private key"
+}
+\end{lstlisting}
+\end{tcolorbox}
+
+Если не хотите видеть секретный ключ в виде обычного текста, используйте \textbf{wpa\_supplicant}, чтобы зашифровать его:
+
+\begin{tcolorbox}
+\begin{lstlisting}
+$ wpa_passphraze akkerdjie "highly private key"
+network={
+  ssid="akkerdjie"
+  #psk="highly private key"
+  <-- Plain comment, can be removed!
+  psk=cbcb52ca4577c8c05b05e84bdd2ef72f313d3c83da18c9da388570ae3a2a0921
+}
+
+\end{lstlisting}
+\end{tcolorbox}
+
+Можно скопировать приведенную информацию и \textit{wpa\_supplicant} и удалить (закомментированную) текстовую информацию ключа.
+
+Если беспроводная карта обнаружена ядром (и включена), то запуск следующей команды активирует wpa\_supplicant поверх нее(преположим6 что беспроводной интерфейс называется wlan0):
+
+\begin{tcolorbox}
+\begin{lstlisting}
+# wpa_supplicant -Dwext -iwlan0 -c/etc/wpa_supplicant.conf
+\end{lstlisting}
+\end{tcolorbox}
+
+Интерес вызывает параметр -D: с помощью него можно выбрать используемый "беспроводной" драйвер. С помощью  -Dwext мы используем беспроводные расширения Linux (достаточно стандартные). В определенных случаях может потребоваться использовать другой драйвер -- в интернете есть множество ресурсов по настройке определенной беспроводной сетевой карты в Linux, если данные расширения не работают.
+
+Разумеется, по завершении составления конфигурационного файла также можно использовать сетевые сценарии Gentoo.
+
+Сперва отредактируйте \textit{/etc/conf.d/net}, чтобы использовать wpa\_supplicant:
+
+\begin{tcolorbox}
+\begin{lstlisting}
+modules="wpa_supplicant"
+wpa_supplicant_wlan0="-Dwext"
+\end{lstlisting}
+\end{tcolorbox}
+
+Чтобы активировать поддержку беспроводной сети при загрузке системы, включите  сценарий net.wlan.0.
+
+Если файл /etc/init.d/net.wlan0 еще не существует, то сперва создайте его:
+\begin{tcolorbox}
+\begin{lstlisting}
+# cd /etc/init.d
+# ln -s net.lo net.wlan0
+\end{lstlisting}
+\end{tcolorbox}
+
+Добавьте этот сценарий инициализации в уровень запуска по умолчанию:
+
+\begin{tcolorbox}
+\begin{lstlisting}
+# rc-update add net.wlan0 default
+\end{lstlisting}
+\end{tcolorbox}
+
+\subsubsection{Дружественные к пользователю инструменты конфигурации сети}
+Вышеприведенная информация должна позволить вам работать с любой возможной инсталляцией Linux. Тем не менее, команды могут показаться сложными, особенно при конфигурации сети, может даже потребовать балансирование между различными командами или окнами до того, как получится заставить соединение работать.
+
+К счастью, существуют другие инструменты, на которые полагаются те же самые, вышеупомянутые инструменты, но предоставляют пользователю полноценный интерфейс, с помощью которого они настраивают сеть. Отметим, что эти действия требуют, чтобы беспроводная карта уже была обнаружена ядром (Таким образом, часть конфигурации ядра должна быть успешной). \\
+
+\textbf{Wicd}
+
+Моим предпочтением является Wicd, готовый к установке через пакет net-misc/wicd. Инструмент состоит из двух частей: демон и интерфейс конфигурации конечного пользователя.
+
+\begin{tcolorbox}
+\begin{lstlisting}
+# emerge wicd
+\end{lstlisting}
+\end{tcolorbox}
+
+После установки добавьте службу wicd в уровень запуска boot или default:
+
+\begin{tcolorbox}
+\begin{lstlisting}
+# rc-update add wicd default
+\end{lstlisting}
+\end{tcolorbox}
+
+Далее, убедитесь, что Gentoo не запускает свою конфигурацию сети, путем редактирования файла /etc/rc.conf, установив следующее:
+
+\begin{tcolorbox}
+\begin{lstlisting}
+rc_hotplug="!net.*"
+\end{lstlisting}
+\end{tcolorbox}
+
+Теперь, запустите службу wicd (и завершите используемые в данный момент службы):
+
+\begin{tcolorbox}
+\begin{lstlisting}
+# /etc/init.d/net.eth1 stop
+# /etc/init.d/wicd start
+\end{lstlisting}
+\end{tcolorbox}
+
+Если вы работаете в графической среде, поддерживающей апплеты (имеются в большинстве сред рабочего стола), запустите \textbf{wicd-client} (из приглашения "запустить программу..."{} или подобного). В интерфейсе командной строки можно использовать \textbf{wicd-curses}. Этот клиент соединяется с сервисом и позволяет легче настраивать сети (как проводные, так и беспроводные).
+
+Я отсылаю вас к странице Wicd [http://wicd.sourceforge.net] для получения дополнительной информации / документации к инструменту.
+
+\subsubsection{Конфигурация сетевого экрана}
+Когда в системе планируется часто использовать Интернет, рекомендуется применять сетевой экран. Люди обычно считают, что если они не кликают "странные"{} ссылки в письмах или на интернет-сайтах, то их операционная система безопасна по умолчанию. К сожалению, это не так. Кроме того, Linux не следует рассматривать как безопасную операционную систему -- безопасность системы в полной мере определяется компетенцией системного администратора.
+
+Сетевой экран не может полностью защитить систему от вредоносных пользователей в (Интер)нете, но будет фильтровать множество из них -- конечно, в зависимости от его устойчивости. 
+
+Существует множество межсетевых экранов для Linux; только в Gentoo Linux существует свыше десятка инструментов (просто проверьте содержание категории net-firewall). Большинство этих инструментов использует \textbf{iptables} в качестве базового инструмента. Iptables -- это инструмент администрирования для работы с пакетами IPv4, также является очень известным и популярным. 
+
+С помощью инструментов сетевого экрана часто создаются правила iptables, которые используются для создания фильтров (актуальный сетевой экран). 
+
+Поскольку написание правил сетевого экрана довольно нестандартное (это зависит от того, какие услуги предлагает система и какие инструменты чаще используются), я предлагаю сперва использовать инструменты сетевого экрана. Позже, когда вы хотите настроить их в дальнейшем, можете написать свои собственные правила iptables.
+
+\subsubsection{Совместное использование Интернет-подключения}
+
+Ранее мы видели команду iptables как часть конфигурации сетевого экрана. однако iptables -- это не средство межсетевого экрана в Linux: его назначение -- создавать правила о том, как работать с сетевыми пакетами на компьютере. Как таковой, iptables может быть использован для создания шлюза NAT, через который клиенты могут получить доступ к Интернету.
+
+В следующих примерах мы предполагаем, что Интернет доступен на интерфейсе wlan0, а все клиенты получают доступ через интерфейс eth0. Кроме того, присвоим нашим клиентам IP-адреса в диапазоне 192.168.20.200-192.168.20.250...\\
+
+\textbf{Переадресация запросов}
+
+Это самый простой шаг: мы просим iptables включить маскарадинг в Интернет-интерфейсе.
+Маскарадинг отслеживает пакеты подключений, исходящих на этом интерфейсе с оригинальными IP-адресом источника; пакеты подключения меняются так как если бы  местная система создаает подключение, а не клиент:
+
+\begin{tcolorbox}
+\begin{lstlisting}
+iptables -A POSTROUTING -t nat -o wlan0 -j MASQUERADE
+\end{lstlisting}
+\end{tcolorbox}
+
+Единственной оставшейся здесь задачей является возможность передачи пакетов от клиентов в Интернет и обратно:
+
+\begin{tcolorbox}
+\begin{lstlisting}
+# iptables -A FORWARD -i eth0 -o wlan0 -s 192.168.20.1/24
+! -d 192.168.20.1/24 -j ACCEPT
+# iptables -A FORWARD -o eth0 -i wlan0 -d 192.168.20.1/24
+! -s 192.168.20.1/24 -j ACCEPT
+\end{lstlisting}
+\end{tcolorbox}
+
+Больше информации об iptables и маскарадинге можно найти в Интернете...
+
+\textbf{Распределение IP-адресов}
+
+Теперь, если eth0 работает, то все клиенты с правильными IP-адресами, присвоенными интерфейсу eth0, могут иметь доступ к Интернету; однако, для них нужно вручную указать локальную систему в качестве шлюза по умолчанию, а также определить необходимые DNS-сервера. К счастью, мы можем автоматизировать этот процесс посредством установки DHCP-сервера, чтобы клиенты могли автоматически получать IP-адрес и необходимые параметры.
+
+Есть много серверов DHCP вокруг. Для небольшой локальной сети я использую DHCP:
+
+\begin{tcolorbox}
+\begin{lstlisting}
+# emerge dhcp
+\end{lstlisting}
+\end{tcolorbox}
+
+Далее я настрою DHCP, чтобы распределить необходимые IP-адрес и другие параметры:
+
+\begin{tcolorbox}
+\begin{lstlisting}
+# nano -w /etc/dhcp/dhcpd.conf
+option domain-name "siphos.be";
+option domain-name-servers 192.168.2.1;
+default-lease-time 600;
+max-lease-time 7200;
+ddns-update-style none ;
+option option-150 code 150 = text ;
+subnet 192.168.20.0 netmask 255.255.255.0 {
+range 192.168.20.100 192.168.20.200;
+option routers 192.168.20.1;
+}
+\end{lstlisting}
+\end{tcolorbox}
+
+Теперь dhcpd настроен, нужно только запустить его, когда нам это нужно:
+
+\begin{tcolorbox}
+\begin{lstlisting}
+# /etc/init.d/dhcpd start
+\end{lstlisting}
+\end{tcolorbox}
+
+Опять же, если вы хотите, чтобы сценарий запускался автоматически, добавьте его в уровень запуска по умолчанию.
+
+\subsubsection{Разрешение удаленного доступа}
+
+Если необходимо разрешить удаленный доступ к системе, есть несколько доступных инструментов. Поскольку эта книга не фокусируется на графических средах, я буду придерживаться SSH-доступа или безопасной оболочки.\\
+
+\textit{\textbf{Предупреждение}\\
+При разрешении удаленного доступа к системе всегда существует угроза безопасности. Если программное обеспечение безопасности не актуально, или ваш пароль легко угадать, или что-нибудь еще, то вы рискуете стать мишенью для враждебно настроенных людей. Это особенно верно, если имеющийся IP-адрес сразу же доступен из Интернета (либо напрямую, либо потому, что вы используете проброс портов на маршрутизаторах).}
+
+\subsubsection{Безопасная оболочка -- SSH}
+
+При включении безопасного доступа в системе, люди, находящиеся в сети, которые имеют учетную запись в системе (или знают о данных учетной записи), могут получить доступ к вашей системе. Инструмент, который называется \textbf{ssh}, шифрует данные, передаваемые по сети, так что никто не может подслушать в сети и подсмотреть имена пользователей, пароли или даже более конфиденциальные информационные потоки.
+
+Чтобы включить SSH-доступ в системе, сначала установите пакет net-misc/openssh:
+
+\begin{tcolorbox}
+\begin{lstlisting}
+# emerge openssh
+\end{lstlisting}
+\end{tcolorbox}
+
+Конечно, это не активирует удаленный доступ автоматически: вам все равно придется попросить систему запустить даемона SSH. Можно сделать это вручную путем запуска сценария \textbf{/etc/init.d/sshd}, а также сказать ей автоматически делать это для вас каждый раз, когда система загружается, с помощью \textbf{rc-update}.
+
+\begin{tcolorbox}
+\begin{lstlisting}
+# /etc/init.d/sshd start
+# rc-update add sshd default
+\end{lstlisting}
+\end{tcolorbox}
+
+Теперь, когда это произойдет, вы (или другие пользователи в вашей сети) могут получить доступ к вашей системе с помощью любого SSH-клиента (на Windows, я всерьез рекомендую PuTTY [http://www.chiark.greenend.org.uk/ ~sgtatham/putty/]). Например, получить доступ к вашей системе с другой системой Linux, то команда может выглядеть так (предположим, что Ваш IP-адрес 192.168.2.100, а имя пользователя "captain")
+
+\begin{tcolorbox}
+\begin{lstlisting}
+ssh -l captain 192.168.2.100
+\end{lstlisting}
+\end{tcolorbox}
+Будет предложено ввести пароль пользователя captain, и тогда вы получите доступ к оболочке, как если бы вы вошли в систему физически.
+
+\subsubsection{Безопасная передача файлов}
+
+Кроме установки и активации SSH-доступа к системе, также можно выполнить безопасную передачу файлов.
+
+Существует два метода для выполнения безопасной передачи файлов, используя инструменты из стандартного пакета openssh: scp или sftp.\\
+
+\textbf{Безопасное копирование}
+
+С помощью \textbf{scp} можно копировать файлы между системами. Если источник и назначение (илди оба) находятся на удаленной системе, подставьте каталог источника или назначения после имени хоста или IP-адреса по столбцу, как указано здесь:
+
+\begin{tcolorbox}
+\begin{lstlisting}
+$ scp thesis.tar.gz 192.168.2.1:/mnt/usb-stick
+\end{lstlisting}
+\end{tcolorbox}
+
+Если для копирования также необходимо указать другого пользователя (скажем, что в настоящее время вы вошли в систему как "заяц"{} (bunny), но на удаленной стороне у нас есть только аккаунт "волк"{} (wolf)):
+
+\begin{tcolorbox}
+\begin{lstlisting}
+$ scp wolf@192.168.2.2:/usr/portage/distfiles/YAML-0.71.tar.gz .
+\end{lstlisting}
+\end{tcolorbox}
+
+\textbf{Безопасный FTP}\\
+
+У вас есть FTP-подобный инструмент \textbf{sftp} (безопасный FTP), (который поддерживает те же команды), но использует протокол SSH для всех данных передачи (и команды).
+
+
+\begin{tcolorbox}
+\begin{lstlisting}
+$ sftp wolf@192.168.2.2
+Connecting to 192.168.2.2...
+Password: (enter wolf's password)
+sftp> cd /usr/portage/distfiles
+sftp> pwd
+Remote working directory: /usr/portage/distfiles
+sftp> lpwd
+Local working directory: /home/bunny
+sftp> get YAML-*
+Fetching /usr/portage/distfiles/YAML-0.71.tar.gz to YAML-0.71.tar.gz
+/usr/portage/distfiles/YAML-0.71.tar.gz 100% 110KB 110.3KB/s 00:00
+sftp>
+\end{lstlisting}
+\end{tcolorbox}
+
+\newpage
+
+\phantom{}
+\begin{tcolorbox}[title=\textbf{Дальнейшие ресурсы}, colback=yellow!14!white, colframe=red!75!blue]
+\begin{itemize}
+\item NdisWrapper: Незаменимое руководство [http://www.linuxquestions.org/linux/answers/Networking/
+NdisWrapper\_The\_Ultimate\_Guide/] на www.linuxquestions.org
+\end{itemize}
+\end{tcolorbox}
+
+\newpage
+
+%%% Глава 12: Управление сжужбами %%%
 \end{document}
-
-
